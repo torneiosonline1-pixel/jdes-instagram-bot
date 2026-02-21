@@ -1,0 +1,18 @@
+# Render.com Configuration for JDES Instagram Bot
+services:
+  - type: web
+    name: jdes-instagram-bot
+    runtime: python
+    plan: free
+    repo: https://github.com/YOUR_USERNAME/jdes-instagram-bot.git
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: PORT
+        value: 8765
+    disk:
+      name: logs
+      mountPath: /data/.openclaw/workspace/jdes-instagram-bot/logs
+      sizeGB: 0.5
