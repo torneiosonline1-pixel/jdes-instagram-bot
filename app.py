@@ -1,147 +1,165 @@
 #!/usr/bin/env python3
 """
 JDES Instagram Bot - Flask App para Render
-Servidor web para receber webhooks do Instagram/Meta
+Bot de atendimento - VERSÃO SIMPLES SEM DEPENDÊNCIAS EXTERNAS
 """
 
 import json
 import os
-import sys
 from datetime import datetime
 from flask import Flask, request, jsonify
-
-# Adicionar path do bot
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-# Corrigido: era 'patd' typo, agora 'path'
-from webhook_handler import bot
 
 app = Flask(__name__)
 
 # Configurações
 PORT = int(os.environ.get('PORT', 8765))
-LOG_FILE = '/data/.openclaw/workspace/jdes-instagram-bot/logs/server.log'
 
-# Garantir que diretório de logs existe
-os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+# Respostas do bot
+RESPOSTAS = {
+    "saudacao": """Olá! ⚽ Bem-vindo à JDES - Escola de Futebol! Como posso ajudar você hoje?
 
-def log_message(message):
-    """Salvar log no arquivo"""
-    timestamp = datetime.now().isoformat()
-    print(f"[{timestamp}] {message}")
-    try:
-        with open(LOG_FILE, 'a') as f:
-            f.write(f"[{timestamp}] {message}\n")
-    except:
-        pass
+1️⃣ Informações sobre matrículas
+2️⃣ Horários de treinos
+3️⃣ Turmas disponíveis
+4️⃣ Preços e valores
+5️⃣ Localização
+6️⃣ Falar com atendente humano""",
+    "matricula": """📝 Para matrículas na JDES:
 
-@app.route('/', methods=['GET'])
+• Idade: 4 a 17 anos
+• Documentos: RG e comprovante de residência
+• Avaliação física gratuita
+
+👉 Quer agendar uma aula experimental? Me envie o nome e idade do aluno!""",
+    "horarios": """⏰ Horários de treinos JDES:
+
+🏟️ Campo Principal:
+• Seg/Qua/Sex: 16h, 17h, 18h
+• Sáb: 09h, 10h, 11h
+
+🏃 Grupos por idade:
+• Sub-7: 16h
+• Sub-10: 17h
+• Sub-13: 18h
+• Sub-17: Sáb 09h
+
+Qual faixa etária?""",
+    "valores": """💰 Investimento JDES:
+
+• Mensalidade: A partir de R$ 149,90
+• Matrícula: Gratuita (promoção)
+• Uniforme: Kit R$ 189,90
+• Desconto: 10% (2º filho), 15% (3º+)
+
+Quer saber valores específicos de uma turma?""",
+    "localizacao": """📍 Onde estamos:
+
+🏟️ JDES - Centro de Treinamento
+[Endereço real da JDES]
+
+📱 WhatsApp: [número]
+📧 Email: contato@jdes.com.br
+
+Venha fazer uma aula experimental gratuita!""",
+    "humano": """👨‍💼 Transferindo para atendente humano...
+
+⏰ Horário de atendimento:
+Seg-Sex: 08h às 20h
+Sáb: 08h às 12h
+
+Deixe sua mensagem que responderemos em breve!""",
+    "erro": """Desculpe, não entendi bem 🤔
+
+Posso ajudar com:
+1️⃣ Matrículas
+2️⃣ Horários
+3️⃣ Turmas
+4️⃣ Preços
+5️⃣ Localização
+6️⃣ Falar com atendente
+
+Escolha uma opção ou escreva sua pergunta!"""
+}
+
+def processar_msg(texto):
+    """Processar mensagem e retornar resposta"""
+    msg = texto.lower().strip()
+    
+    # Saudações
+    if any(x in msg for x in ["oi", "olá", "ola", "bom dia", "boa tarde", "boa noite", "hey", "opa"]):
+        return RESPOSTAS["saudacao"]
+    
+    # Matrícula
+    if any(x in msg for x in ["matricula", "matrícula", "inscrição", "inscricao", "cadastro", "vaga", "entrar"]):
+        return RESPOSTAS["matricula"]
+    
+    # Horários
+    if any(x in msg for x in ["horario", "horário", "horas", "treino", "aula", "quando", "funciona"]):
+        return RESPOSTAS["horarios"]
+    
+    # Valores
+    if any(x in msg for x in ["preço", "preco", "valor", "mensalidade", "custa", "pagar", "dinheiro", "desconto"]):
+        return RESPOSTAS["valores"]
+    
+    # Localização
+    if any(x in msg for x in ["onde", "endereço", "local", "fica", "chegar", "morro", "bairro"]):
+        return RESPOSTAS["localizacao"]
+    
+    # Menu numérico
+    if msg in ["1", "matrículas", "matriculas"]:
+        return RESPOSTAS["matricula"]
+    elif msg in ["2", "horários", "horarios", "treinos"]:
+        return RESPOSTAS["horarios"]
+    elif msg in ["3", "turmas"]:
+        return RESPOSTAS["horarios"]
+    elif msg in ["4", "preços", "precos", "valores"]:
+        return RESPOSTAS["valores"]
+    elif msg in ["5", "localização", "localizacao", "onde"]:
+        return RESPOSTAS["localizacao"]
+    elif msg in ["6", "atendente", "humano", "pessoa"]:
+        return RESPOSTAS["humano"]
+    
+    return RESPOSTAS["erro"]
+
+@app.route('/')
 def home():
-    """Pagina inicial - status do bot"""
-    return jsonify({
-        "status": "ok",
-        "message": "JDES Instagram Bot Server online!",
-        "bot_name": "JDES Futebol Bot",
-        "timestamp": datetime.now().isoformat(),
-        "endpoints": {
-            "GET /": "Status",
-            "POST /webhook": "Receber mensagens do Instagram",
-            "POST /test": "Testar bot",
-            "GET /health": "Health check"
-        }
-    })
+    return jsonify({"status": "ok", "message": "JDES Bot Online", "timestamp": datetime.now().isoformat()})
 
-@app.route('/health', methods=['GET'])
+@app.route('/health')
 def health():
-    """Health check para Render"""
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
 
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
-    """Receber webhooks do Instagram/Meta"""
-    
-    # GET - Verificação do webhook (Meta webhook verification)
     if request.method == 'GET':
         challenge = request.args.get('hub.challenge')
         if challenge:
-            log_message(f"✅ Verificação de webhook recebida: {challenge}")
             return challenge, 200
-        
-        return jsonify({"status": "ok", "method": "GET"})
+        return jsonify({"status": "ok"})
     
-    # POST - Receber mensagens
-    if request.method == 'POST':
+    data = request.get_json() or {}
+    sender_id = data.get('sender', {}).get('id', 'unknown')
+    msg = data.get('message', {}).get('text', '')
+    
+    if not msg and 'entry' in data:
         try:
-            data = request.get_json() or {}
-            log_message(f"📩 Webhook recebido: {json.dumps(data)[:200]}...")
-            
-            # Extrair mensagem do formato Instagram/Meta
-            sender_id = data.get('sender', {}).get('id', 'unknown')
-            message_text = data.get('message', {}).get('text', '')
-            
-            # Formato webhook Meta (mais complexo)
-            if not message_text and 'entry' in data:
-                try:
-                    entry = data['entry'][0]
-                    messaging = entry['messaging'][0]
-                    sender_id = messaging['sender']['id']
-                    message_text = messaging['message']['text']
-                except (KeyError, IndexError):
-                    pass
-            
-            # Processar com o bot
-            if message_text:
-                resposta = bot.processar_mensagem(sender_id, message_text)
-                log_message(f"🤖 Resposta para {sender_id}: {resposta[:100]}...")
-                
-                return jsonify({
-                    "status": "success",
-                    "sender_id": sender_id,
-                    "message_received": message_text,
-                    "bot_response": resposta
-                })
-            else:
-                return jsonify({
-                    "status": "error",
-                    "message": "No text message found"
-                }), 400
-                
-        except Exception as e:
-            log_message(f"❌ Erro: {str(e)}")
-            return jsonify({
-                "status": "error",
-                "message": str(e)
-            }), 500
+            msg = data['entry'][0]['messaging'][0]['message']['text']
+            sender_id = data['entry'][0]['messaging'][0]['sender']['id']
+        except:
+            pass
+    
+    if msg:
+        resp = processar_msg(msg)
+        return jsonify({"status": "success", "response": resp})
+    
+    return jsonify({"status": "error", "message": "No text"}), 400
 
 @app.route('/test', methods=['POST'])
-def test_bot():
-    """Endpoint para testar o bot"""
-    try:
-        data = request.get_json() or {}
-        mensagem = data.get('message', 'oi')
-        sender = data.get('sender_id', 'test')
-        
-        resposta = bot.processar_mensagem(sender, mensagem)
-        
-        return jsonify({
-            "status": "success",
-            "test": True,
-            "input": mensagem,
-            "output": resposta
-        })
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
+def teste():
+    data = request.get_json() or {}
+    msg = data.get('message', 'oi')
+    return jsonify({"status": "success", "input": msg, "output": processar_msg(msg)})
 
 if __name__ == '__main__':
-    print(f"""
-🚀 JDES INSTAGRAM BOT SERVER
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📡 Porta: {PORT}
-🌐 Local: http://localhost:{PORT}
-📩 Webhook: POST http://localhost:{PORT}/webhook
-🧪 Teste: POST http://localhost:{PORT}/test
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    """)
-    app.run(host='0.0.0.0', port=PORT, debug=False)
+    print(f"🚀 JDES Bot rodando na porta {PORT}")
+    app.run(host='0.0.0.0', port=PORT)
