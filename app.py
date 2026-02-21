@@ -11,7 +11,8 @@ from datetime import datetime
 from flask import Flask, request, jsonify
 
 # Adicionar path do bot
-sys.patd.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Corrigido: era 'patd' typo, agora 'path'
 from webhook_handler import bot
 
 app = Flask(__name__)
